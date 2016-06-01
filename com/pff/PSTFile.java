@@ -32,8 +32,16 @@
  *
  */
 package com.pff;
-import java.io.*;
-import java.util.*;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.RandomAccessFile;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.Properties;
+import java.util.UUID;
 
 /**
  * PSTFile is the containing class that allows you to access items within a .pst file.
@@ -103,6 +111,8 @@ public class PSTFile {
 	private int itemCount = 0;
 	
 	private RandomAccessFile in;
+
+	private String	codepage;
 	
 	/**
 	 * constructor
@@ -139,8 +149,8 @@ public class PSTFile {
 			if (fileTypeBytes[0] == PSTFile.PST_TYPE_ANSI_2) {
 				fileTypeBytes[0] = PSTFile.PST_TYPE_ANSI;
 			}
-			if (fileTypeBytes[0] != PSTFile.PST_TYPE_ANSI &&
-				fileTypeBytes[0] != PSTFile.PST_TYPE_UNICODE)
+			if ((fileTypeBytes[0] != PSTFile.PST_TYPE_ANSI) &&
+				(fileTypeBytes[0] != PSTFile.PST_TYPE_UNICODE))
 			{
 				throw new PSTException("Unrecognised PST File version: "+fileTypeBytes[0]);
 			}
@@ -254,7 +264,7 @@ public class PSTFile {
 				} else {
 					guidIndex = uuidIndexes[wGuid-3];
 				}
-				nameToId.put((long)dwPropertyId | ((long)guidIndex << 32), wPropIdx);
+				nameToId.put(dwPropertyId | ((long)guidIndex << 32), wPropIdx);
 				idToName.put(wPropIdx, (long)dwPropertyId);
 /*
 				System.out.printf("0x%08X:%04X, 0x%08X\n", dwPropertyId, guidIndex, wPropIdx);
@@ -289,7 +299,7 @@ public class PSTFile {
 	
 	int getNameToIdMapItem(int key, int propertySetIndex)
 	{
-		long lKey = ((long)propertySetIndex << 32) | (long)key;
+		long lKey = ((long)propertySetIndex << 32) | key;
 		Integer i = nameToId.get(lKey);
 		if ( i == null )
 		{
@@ -562,8 +572,8 @@ public class PSTFile {
 			in.seek(btreeStartOffset+496);
 		}
 		in.read(temp);
-		while	((temp[0] == 0xffffff80 && temp[1] == 0xffffff80 && !descTree) ||
-				 (temp[0] == 0xffffff81 && temp[1] == 0xffffff81 && descTree))
+		while	(((temp[0] == 0xffffff80) && (temp[1] == 0xffffff80) && !descTree) ||
+				 ((temp[0] == 0xffffff81) && (temp[1] == 0xffffff81) && descTree))
 		{
 
 			// get the rest of the data....
@@ -810,7 +820,7 @@ public class PSTFile {
 		}
 		in.read(temp);
 
-		if ((temp[0] == 0xffffff81 && temp[1] == 0xffffff81)) {
+		if (((temp[0] == 0xffffff81) && (temp[1] == 0xffffff81))) {
 
 			if (this.getPSTFileType() == PST_TYPE_ANSI) {
 				in.seek(btreeStartOffset+496);
@@ -873,5 +883,11 @@ public class PSTFile {
 		}
 	}
 
-
+	public void setCodepage(String codepage) {
+		this.codepage = codepage;
+	}
+	
+	public String getCodepage() {
+		return (getPSTFileType() == PSTFile.PST_TYPE_ANSI) ? this.codepage : "UTF-16LE";
+	}
 }
