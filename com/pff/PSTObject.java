@@ -34,13 +34,12 @@
 package com.pff;
 
 import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.nio.charset.Charset;
-import java.util.*;
-import java.io.*;
-
-//import com.pff.PSTFile.PSTFileBlock;
-import java.io.ByteArrayInputStream;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.Set;
 
 /**
  * PST Object is the root class of all PST Items.
@@ -151,7 +150,7 @@ public class PSTObject {
 	}
 	protected int getIntItem(int identifier, int defaultValue) {
 		if (this.items.containsKey(identifier)) {
-			PSTTableBCItem item = (PSTTableBCItem)this.items.get(identifier);
+			PSTTableBCItem item = this.items.get(identifier);
 			return item.entryValueReference;
 		}
 		return defaultValue;
@@ -162,7 +161,7 @@ public class PSTObject {
 	}
 	protected boolean getBooleanItem(int identifier, boolean defaultValue) {
 		if (this.items.containsKey(identifier)) {
-			PSTTableBCItem item = (PSTTableBCItem)this.items.get(identifier);
+			PSTTableBCItem item = this.items.get(identifier);
 			return item.entryValueReference != 0;
 		}
 		return defaultValue;
@@ -173,7 +172,7 @@ public class PSTObject {
 	}
 	protected double getDoubleItem(int identifier, double defaultValue) {
 		if (this.items.containsKey(identifier)) {
-			PSTTableBCItem item = (PSTTableBCItem)this.items.get(identifier);
+			PSTTableBCItem item = this.items.get(identifier);
 			long longVersion = PSTObject.convertLittleEndianBytesToLong(item.data);
 			return Double.longBitsToDouble(longVersion);
 		}
@@ -186,13 +185,13 @@ public class PSTObject {
 	}
 	protected long getLongItem(int identifier, long defaultValue) {
 		if (this.items.containsKey(identifier)) {
-			PSTTableBCItem item = (PSTTableBCItem)this.items.get(identifier);
+			PSTTableBCItem item = this.items.get(identifier);
 			if (item.entryValueType == 0x0003) {
 				// we are really just an int
 				return item.entryValueReference;
 			} else if ( item.entryValueType == 0x0014 ){
 				// we are a long
-				if ( item.data != null && item.data.length == 8 ) {
+				if ( (item.data != null) && (item.data.length == 8) ) {
 					return PSTObject.convertLittleEndianBytesToLong(item.data, 0, 8);
 				} else {
 					System.err.printf("Invalid data length for long id 0x%04X\n", identifier);
@@ -210,11 +209,14 @@ public class PSTObject {
 		return getStringItem(identifier, stringType, null);
 	}
 	protected String getStringItem(int identifier, int stringType, String codepage) {
-		PSTTableBCItem item = (PSTTableBCItem)this.items.get(identifier);
+		PSTTableBCItem item = this.items.get(identifier);
 		if ( item != null ) {
 
 			if (codepage == null) {
 				codepage = this.getStringCodepage();
+				if (codepage == null) {
+					codepage = pstFile.getCodepage();
+				}
 			}
 
 			// get the string type from the item if not explicitly set
@@ -227,11 +229,11 @@ public class PSTObject {
 				//System.out.println("here: "+new String(item.data)+this.descriptorIndexNode.descriptorIdentifier);
 				return PSTObject.createJavaString(item.data, stringType, codepage);
 			}
-			if (this.localDescriptorItems != null &&
+			if ((this.localDescriptorItems != null) &&
 				this.localDescriptorItems.containsKey(item.entryValueReference))
 			{
 				// we have a hit!
-				PSTDescriptorItem descItem = (PSTDescriptorItem)this.localDescriptorItems.get(item.entryValueReference);
+				PSTDescriptorItem descItem = this.localDescriptorItems.get(item.entryValueReference);
 				
 				try {
 					byte[] data = descItem.getData();
@@ -293,9 +295,9 @@ public class PSTObject {
 
 	private String getStringCodepage() {
 		// try and get the codepage
-		PSTTableBCItem cpItem = (PSTTableBCItem)this.items.get(0x3FFD); // PidTagMessageCodepage
+		PSTTableBCItem cpItem = this.items.get(0x3FFD); // PidTagMessageCodepage
 		if (cpItem == null) {
-			cpItem = (PSTTableBCItem)this.items.get(0x3FDE); // PidTagInternetCodepage
+			cpItem = this.items.get(0x3FDE); // PidTagInternetCodepage
 		}
 		if (cpItem != null) {
 			return PSTFile.getInternetCodePageCharset(cpItem.entryValueReference);
@@ -305,7 +307,7 @@ public class PSTObject {
 	
 	public Date getDateItem(int identifier) {
 		if ( this.items.containsKey(identifier) ) {
-			PSTTableBCItem item = (PSTTableBCItem)this.items.get(identifier);
+			PSTTableBCItem item = this.items.get(identifier);
 			if (item.data.length == 0 ) {
 				return new Date(0);
 			}
@@ -319,16 +321,16 @@ public class PSTObject {
 	
 	protected byte[] getBinaryItem(int identifier) {
 		if (this.items.containsKey(identifier)) {
-			PSTTableBCItem item = (PSTTableBCItem)this.items.get(identifier);
+			PSTTableBCItem item = this.items.get(identifier);
 			if ( item.entryValueType == 0x0102 ) {
 				if ( !item.isExternalValueReference ) {
 					return item.data;
 				}
-				if ( this.localDescriptorItems != null &&
+				if ( (this.localDescriptorItems != null) &&
 					 this.localDescriptorItems.containsKey(item.entryValueReference))
 				{
 					// we have a hit!
-					PSTDescriptorItem descItem = (PSTDescriptorItem)this.localDescriptorItems.get(item.entryValueReference);
+					PSTDescriptorItem descItem = this.localDescriptorItems.get(item.entryValueReference);
 					try {
 						return descItem.getData();
 					} catch (Exception e) {
@@ -346,7 +348,7 @@ public class PSTObject {
 	
 	protected PSTTimeZone getTimeZoneItem(int identifier) {
 		byte[] tzData = getBinaryItem(identifier);
-		if ( tzData != null && tzData.length != 0 ) {
+		if ( (tzData != null) && (tzData.length != 0) ) {
 			return new PSTTimeZone(tzData);
 		}
 		return null;
@@ -356,6 +358,7 @@ public class PSTObject {
 		return this.getStringItem(0x001a);
 	}
 	
+	@Override
 	public String toString() {
 		return this.localDescriptorItems + "\n" +
 				(this.items);
@@ -451,13 +454,13 @@ public class PSTObject {
 		for (int x = 0; x < data.length; x++) {
 			tmpLongValue = (long)data[x] & 0xff;
 			
-			if (indexes.length > 0 &&
-				x == nextIndex &&
-				nextIndex < data.length)
+			if ((indexes.length > 0) &&
+				(x == nextIndex) &&
+				(nextIndex < data.length))
 			{
 				System.out.print("+");
 				line += "+";
-				while (indexIndex < indexes.length-1 && indexes[indexIndex] <= nextIndex) 
+				while ((indexIndex < indexes.length-1) && (indexes[indexIndex] <= nextIndex)) 
 				{
 					indexIndex++;
 				}
@@ -477,10 +480,10 @@ public class PSTObject {
 				System.out.print("0");
 			}
 			System.out.print(Long.toHexString(tmpLongValue));
-			if (x % 2 == 1 && pretty) {
+			if ((x % 2 == 1) && pretty) {
 				System.out.print(" ");
 			}
-			if (x % 16 == 15 && pretty) {
+			if ((x % 16 == 15) && pretty) {
 				System.out.print(" "+line);
 				System.out.println("");
 				line = "";
@@ -565,7 +568,7 @@ public class PSTObject {
 		long offset = 0;
 		for ( int x = start; x < end; ++x ) {
 			offset = offset << 8;
-			offset |= ((long)data[x] & 0xFFL);
+			offset |= (data[x] & 0xFFL);
 		}
 		
 		return offset;
@@ -635,9 +638,9 @@ public class PSTObject {
 		int nidType = (folderIndexNode.descriptorIdentifier & 0x1F);
 
 		while (iterator.hasNext()) {
-			Integer key = (Integer)iterator.next();
-			if (key.intValue() >= 0x0001 &&
-				key.intValue() <= 0x0bff)
+			Integer key = iterator.next();
+			if ((key.intValue() >= 0x0001) &&
+				(key.intValue() <= 0x0bff))
 			{
 				type = "Message envelope";
 				if ( nidType != 4 ) {
@@ -651,17 +654,17 @@ public class PSTObject {
 				type = "Message content";
 				break;
 			}*/
-			else if (key.intValue() >= 0x3400 &&
-					 key.intValue() <= 0x35ff)
+			else if ((key.intValue() >= 0x3400) &&
+					 (key.intValue() <= 0x35ff))
 			{
 				type = "Message store";
 				break;
 			}
-			else if (key.intValue() >= 0x3600 &&
-				key.intValue() <= 0x36ff)
+			else if ((key.intValue() >= 0x3600) &&
+				(key.intValue() <= 0x36ff))
 			{
 				type = "Folder and address book";
-				if ( nidType != 2 && nidType != 3 ) {
+				if ( (nidType != 2) && (nidType != 3) ) {
 					// System.out.printf("nidType: 0x%02X\n", nidType);
 				}
 				break;
@@ -684,8 +687,8 @@ public class PSTObject {
 				type = "Messaging user";
 				break;
 			}*/
-			else if (key.intValue() >= 0x3c00 &&
-					key.intValue() <= 0x3cff)
+			else if ((key.intValue() >= 0x3c00) &&
+					(key.intValue() <= 0x3cff))
 			{
 				type = "Distribution list";
 				break;
@@ -703,7 +706,7 @@ public class PSTObject {
 //		System.out.println(table);
 		
 //		if (type.equals("Folder and address book")) {
-		if ( nidType == 0x02 || nidType == 0x03 ) {
+		if ( (nidType == 0x02) || (nidType == 0x03) ) {
 			return new PSTFolder(theFile, folderIndexNode, table, localDescriptorItems);
 		//} else if (type.equals("Message envelope")) {
 		} else if ( nidType == 0x04 ) {
@@ -787,7 +790,7 @@ public class PSTObject {
     }
 
     public static Calendar apptTimeToCalendar(int minutes) {
-    	final long ms_since_16010101 = (long)minutes * (60*1000L);
+    	final long ms_since_16010101 = minutes * (60*1000L);
         final long ms_since_19700101 = ms_since_16010101 - EPOCH_DIFF;
         Calendar c = Calendar.getInstance(PSTTimeZone.utcTimeZone);
         c.setTimeInMillis(ms_since_19700101);
