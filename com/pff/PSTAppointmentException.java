@@ -51,7 +51,7 @@ public class PSTAppointmentException {
 	public String getSubject() {
 		if ( (OverrideFlags & 0x0001) != 0 ) {
 			try {
-				return new String(WideCharSubject, "UTF-16LE");
+				return new String(WideCharSubject, appt.pstFile.getCodepage());
 			} catch (UnsupportedEncodingException e) {
 				e.printStackTrace();
 			}
@@ -92,7 +92,7 @@ public class PSTAppointmentException {
 	public String getLocation() {
 		if ( (OverrideFlags & 0x0010) != 0 ) {
 			try {
-				return new String(WideCharLocation, "UTF-16LE");
+				return new String(WideCharLocation, appt.pstFile.getCodepage());
 			} catch (UnsupportedEncodingException e) {
 				e.printStackTrace();
 			}
@@ -186,8 +186,8 @@ public class PSTAppointmentException {
 	}
 	
 	public boolean attachmentsPresent() {
-		if ( (OverrideFlags & 0x0040) != 0 &&
-			  Attachment == 0x00000001 )
+		if ( ((OverrideFlags & 0x0040) != 0) &&
+			  (Attachment == 0x00000001) )
 		{
 			return true;
 		}
