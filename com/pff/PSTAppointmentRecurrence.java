@@ -37,8 +37,13 @@ package com.pff;
 import java.text.SimpleDateFormat;
 /**/
 
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collection;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.SimpleTimeZone;
 
 /**
@@ -57,12 +62,24 @@ public class PSTAppointmentRecurrence {
 	}
 
 	public PSTAppointmentException getException(int i) {
-		if ( i < 0 || i >= ExceptionCount ) {
+		if ( (i < 0) || (i >= ExceptionCount) ) {
 			return null;
 		}
 		return Exceptions[i];
 	}
 
+	public PSTAppointmentException[] getExceptions() {
+		return Exceptions;
+	}
+	
+	public Collection<Calendar> getDeletedInstanceDates() {
+		return DeletedInstanceDates;
+	}
+	
+	public Collection<Calendar> getModifiedInstanceDates() {
+		return ModifiedInstanceDates;
+	}
+	
 	public short getCalendarType() {
 		return CalendarType;
 	}
@@ -142,7 +159,7 @@ public class PSTAppointmentRecurrence {
 		if ( PatternType != 0 ) {
 			PatternSpecific = (int)PSTObject.convertLittleEndianBytesToLong(recurrencePattern, offset, offset+4);
 			offset += 4;
-			if ( PatternType == 0x0003 || PatternType == 0x000B ) {
+			if ( (PatternType == 0x0003) || (PatternType == 0x000B) ) {
 				PatternSpecificNth = (int)PSTObject.convertLittleEndianBytesToLong(recurrencePattern, offset, offset+4);
 				offset += 4;
 			}
@@ -156,11 +173,10 @@ public class PSTAppointmentRecurrence {
 
 		DeletedInstanceCount = (int)PSTObject.convertLittleEndianBytesToLong(recurrencePattern, offset, offset+4);
 		offset += 4;
-		DeletedInstanceDates = new Calendar[DeletedInstanceCount];
 		for ( int i = 0; i < DeletedInstanceCount; ++i ) {
-			DeletedInstanceDates[i] = PSTObject.apptTimeToUTC(
+			DeletedInstanceDates.add(PSTObject.apptTimeToUTC(
 					(int)PSTObject.convertLittleEndianBytesToLong(recurrencePattern, offset, offset+4),
-					RecurrenceTimeZone);
+					RecurrenceTimeZone));
 			offset += 4;
 /*
 			SimpleDateFormat f = new SimpleDateFormat("yyyyMMdd'T'HHmmss");
@@ -171,11 +187,10 @@ public class PSTAppointmentRecurrence {
 		
 		ModifiedInstanceCount = (int)PSTObject.convertLittleEndianBytesToLong(recurrencePattern, offset, offset+4);
 		offset += 4;
-		ModifiedInstanceDates = new Calendar[ModifiedInstanceCount];
 		for ( int i = 0; i < ModifiedInstanceCount; ++i ) {
-			ModifiedInstanceDates[i] = PSTObject.apptTimeToUTC(
+			ModifiedInstanceDates.add(PSTObject.apptTimeToUTC(
 					(int)PSTObject.convertLittleEndianBytesToLong(recurrencePattern, offset, offset+4),
-					RecurrenceTimeZone);
+					RecurrenceTimeZone));
 			offset += 4;
 /*
 			SimpleDateFormat f = new SimpleDateFormat("yyyyMMdd'T'HHmmss");
@@ -183,6 +198,7 @@ public class PSTAppointmentRecurrence {
 			System.out.printf("ModifiedInstanceDates[%d]: %s\n", i, f.format(ModifiedInstanceDates[i].getTime()));
 /**/		
 		}
+		DeletedInstanceDates.removeAll(ModifiedInstanceDates);	// Modified instances are included in Deleted instances (...)
 		
 		StartDate = (int)PSTObject.convertLittleEndianBytesToLong(recurrencePattern, offset, offset+4);
 		offset += 4;
@@ -256,9 +272,10 @@ public class PSTAppointmentRecurrence {
 /**/
 						Calendar c = Calendar.getInstance(stz);
 						c.setTime(replaceTime);
-						if ( c.get(Calendar.YEAR) == ModifiedInstanceDates[i].get(Calendar.YEAR) &&
-							 c.get(Calendar.MONTH) == ModifiedInstanceDates[i].get(Calendar.MONTH) &&
-							 c.get(Calendar.YEAR) == ModifiedInstanceDates[i].get(Calendar.YEAR) )
+						Calendar modified = ModifiedInstanceDates.get(i);
+						if ( (c.get(Calendar.YEAR) == modified.get(Calendar.YEAR)) &&
+							 (c.get(Calendar.MONTH) == modified.get(Calendar.MONTH)) &&
+							 (c.get(Calendar.DATE) == modified.get(Calendar.DATE)) )
 						{
 /*							System.out.println("\tEmbedded Message matched"); /**/
 
@@ -295,9 +312,9 @@ public class PSTAppointmentRecurrence {
 	private int		OccurrenceCount;
 	private int		FirstDOW;
 	private int		DeletedInstanceCount;
-	private Calendar[]	DeletedInstanceDates = null;
+	private Set<Calendar>	DeletedInstanceDates = new HashSet<Calendar>();
 	private int		ModifiedInstanceCount;
-	private Calendar[]	ModifiedInstanceDates = null;
+	private List<Calendar>	ModifiedInstanceDates = new ArrayList<Calendar>();
 	private int		StartDate;
 	private int		EndDate;
 	//private int	readerVersion2;
