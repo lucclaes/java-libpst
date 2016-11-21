@@ -79,17 +79,13 @@ public class PSTAppointment extends PSTMessage {
 	public PSTTimeZone getEndTimeZone() {
 		return getTimeZoneItem(pstFile.getNameToIdMapItem(0x0000825f, PSTFile.PSETID_Appointment));
 	}
-	
+
 	public PSTTimeZone getRecurrenceTimeZone() {
 		String desc = getStringItem(pstFile.getNameToIdMapItem(0x00008234, PSTFile.PSETID_Appointment));
-		if ( desc!= null && desc.length() != 0 ) {
-			byte[] tzData = getBinaryItem(pstFile.getNameToIdMapItem(0x00008233, PSTFile.PSETID_Appointment));
-			if ( tzData != null && tzData.length != 0 ) {
-				return new PSTTimeZone(desc, tzData);
-			}
-		}
-		return null;
+		byte[] tzData = getBinaryItem(pstFile.getNameToIdMapItem(0x00008233, PSTFile.PSETID_Appointment));
+		return new PSTTimeZone(desc, tzData);
 	}
+
 	public int getDuration() {
 		return getIntItem(pstFile.getNameToIdMapItem(0x00008213, PSTFile.PSETID_Appointment));
 	}
@@ -135,7 +131,7 @@ public class PSTAppointment extends PSTMessage {
 	public int getAppointmentSequence() {
 		return getIntItem(pstFile.getNameToIdMapItem(0x00008201, PSTFile.PSETID_Appointment));
 	}
-	
+
 	// online meeting properties
 	public boolean isOnlineMeeting() {
 		return (getBooleanItem(pstFile.getNameToIdMapItem(0x00008240, PSTFile.PSETID_Appointment)));
@@ -170,7 +166,7 @@ public class PSTAppointment extends PSTMessage {
 	public String getConferenceServerPassword() {
 		return getStringItem(pstFile.getNameToIdMapItem(0x00008249, PSTFile.PSETID_Appointment));
 	}
-	
+
 	public boolean getAppointmentCounterProposal() {
 		return (getBooleanItem(pstFile.getNameToIdMapItem(0x00008257, PSTFile.PSETID_Appointment)));
 	}
@@ -182,7 +178,7 @@ public class PSTAppointment extends PSTMessage {
 	public String getRequiredAttendees() {
 		return getStringItem(this.pstFile.getNameToIdMapItem(0x00000006, PSTFile.PSETID_Meeting));
 	}
-	
+
 	public int getLocaleId() {
 		return getIntItem(0x3ff1);
 	}

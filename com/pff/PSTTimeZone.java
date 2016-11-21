@@ -39,11 +39,15 @@ import java.util.SimpleTimeZone;
 /**
  * Class containing time zone information
  * @author Orin Eman
- * 
- * 
+ *
+ *
  */
 
 public class PSTTimeZone {
+	private String	name;
+	private TZRule	rule;
+	private SimpleTimeZone simpleTimeZone;
+
 	PSTTimeZone(byte [] timeZoneData) {
 		this.rule = null;
 		name = "";
@@ -73,26 +77,24 @@ public class PSTTimeZone {
 			name = "";
 		}
 	}
-	
+
 	PSTTimeZone(String name, byte[] timeZoneData) {
-		this.name = name;
-		this.rule = null;
-		
+		this.name = name != null ? name : "default";
+
 		try {
 			this.rule = new TZRule(new SYSTEMTIME(), timeZoneData, 0);
-		}
-		catch ( Exception e ) {
+		} catch ( Exception e ) {
 			System.err.printf("Exception reading timezone: %s\n", e.toString());
 			e.printStackTrace();
 			this.rule = null;
 			name = "";
 		}
 	}
-	
+
 	public String getName() {
 		return name;
 	}
-	
+
 	public SimpleTimeZone getSimpleTimeZone() {
 		if ( simpleTimeZone != null ) {
 			return simpleTimeZone;
@@ -128,21 +130,21 @@ public class PSTTimeZone {
 					 rule.startStandard.wMilliseconds,
 				savings
 				);
-		
+
 		return simpleTimeZone;
 	}
-	
+
 	public boolean isEqual(PSTTimeZone rhs) {
 		if ( name.equalsIgnoreCase(rhs.name) ) {
 			if ( rule.isEqual(rhs.rule) ) {
 				return true;
 			}
-			
+
 			System.err.printf("Warning: different timezones with the same name: %s\n", name);
 		}
-		return false;			
+		return false;
 	}
-	
+
 	public SYSTEMTIME getStart() {
 		return rule.dtStart;
 	}
@@ -150,15 +152,15 @@ public class PSTTimeZone {
 	public int getBias() {
 		return rule.lBias;
 	}
-	
+
 	public int getStandardBias() {
 		return rule.lStandardBias;
 	}
-	
+
 	public int getDaylightBias() {
 		return rule.lDaylightBias;
 	}
-	
+
 	public SYSTEMTIME getDaylightStart() {
 		return rule.startDaylight;
 	}
@@ -168,7 +170,7 @@ public class PSTTimeZone {
 	}
 
 	public class SYSTEMTIME {
-		
+
 		SYSTEMTIME() {
 			wYear = 0;
 			wMonth = 0;
@@ -190,16 +192,16 @@ public class PSTTimeZone {
 			wSecond = (short)(PSTObject.convertLittleEndianBytesToLong(timeZoneData, offset+12, offset+14)&0x7FFF);
 			wMilliseconds = (short)(PSTObject.convertLittleEndianBytesToLong(timeZoneData, offset+14, offset+16)&0x7FFF);
 		}
-		
+
 		boolean isEqual(SYSTEMTIME rhs) {
-			return	wYear == rhs.wYear &&
-					wMonth == rhs.wMonth &&
-					wDayOfWeek == rhs.wDayOfWeek &&
-					wDay == rhs.wDay &&
-					wHour == rhs.wHour &&
-					wMinute == rhs.wMinute &&
-					wSecond == rhs.wSecond &&
-					wMilliseconds == rhs.wMilliseconds;
+			return	(wYear == rhs.wYear) &&
+					(wMonth == rhs.wMonth) &&
+					(wDayOfWeek == rhs.wDayOfWeek) &&
+					(wDay == rhs.wDay) &&
+					(wHour == rhs.wHour) &&
+					(wMinute == rhs.wMinute) &&
+					(wSecond == rhs.wSecond) &&
+					(wMilliseconds == rhs.wMilliseconds);
 		}
 
 		public short wYear;
@@ -218,16 +220,31 @@ public class PSTTimeZone {
 	public static SimpleTimeZone utcTimeZone = new SimpleTimeZone(0, "UTC");
 
 	private class TZRule {
+		SYSTEMTIME	dtStart;
+		SYSTEMTIME	startStandard;
+		SYSTEMTIME	startDaylight;
+		int			lBias;
+		int			lStandardBias;
+		int			lDaylightBias;
 
 		TZRule(SYSTEMTIME dtStart, byte[] timeZoneData, int offset) {
-			this.dtStart = dtStart;
-			InitBiases(timeZoneData, offset);
-			@SuppressWarnings("unused")
-			short wStandardYear = (short)PSTObject.convertLittleEndianBytesToLong(timeZoneData, offset+12, offset+14);
-			startStandard = new SYSTEMTIME(timeZoneData, offset+14);
-			@SuppressWarnings("unused")
-			short wDaylightYear = (short)PSTObject.convertLittleEndianBytesToLong(timeZoneData, offset+30, offset+32);
-			startDaylight = new SYSTEMTIME(timeZoneData, offset+32);
+			if ((timeZoneData != null) && (timeZoneData.length > 0)) {
+				this.dtStart = dtStart;
+				InitBiases(timeZoneData, offset);
+				@SuppressWarnings("unused")
+				short wStandardYear = (short)PSTObject.convertLittleEndianBytesToLong(timeZoneData, offset+12, offset+14);
+				startStandard = new SYSTEMTIME(timeZoneData, offset+14);
+				@SuppressWarnings("unused")
+				short wDaylightYear = (short)PSTObject.convertLittleEndianBytesToLong(timeZoneData, offset+30, offset+32);
+				startDaylight = new SYSTEMTIME(timeZoneData, offset+32);
+			} else {
+				this.dtStart = new SYSTEMTIME();
+				startStandard = new SYSTEMTIME();
+				startDaylight = new SYSTEMTIME();
+				lBias = 0;
+				lStandardBias = 0;
+				lDaylightBias = 0;
+			}
 		}
 
 		TZRule(byte[] timeZoneData, int offset) {
@@ -236,31 +253,21 @@ public class PSTTimeZone {
 			startStandard = new SYSTEMTIME(timeZoneData, offset+28);
 			startDaylight = new SYSTEMTIME(timeZoneData, offset+44);
 		}
-		
+
 		private void InitBiases(byte[] timeZoneData, int offset) {
 			lBias = (int)PSTObject.convertLittleEndianBytesToLong(timeZoneData, offset, offset+4);
 			lStandardBias = (int)PSTObject.convertLittleEndianBytesToLong(timeZoneData, offset+4, offset+8);
 			lDaylightBias = (int)PSTObject.convertLittleEndianBytesToLong(timeZoneData, offset+8, offset+12);
 		}
-		
+
 		boolean isEqual(TZRule rhs) {
 			return	dtStart.isEqual(rhs.dtStart) &&
-					lBias == rhs.lBias &&
-					lStandardBias == rhs.lStandardBias &&
-					lDaylightBias == rhs.lDaylightBias &&
+					(lBias == rhs.lBias) &&
+					(lStandardBias == rhs.lStandardBias) &&
+					(lDaylightBias == rhs.lDaylightBias) &&
 					startStandard.isEqual(rhs.startStandard) &&
 					startDaylight.isEqual(rhs.startDaylight);
 		}
-	
-		SYSTEMTIME	dtStart;
-		int			lBias;
-		int			lStandardBias;
-		int			lDaylightBias;
-		SYSTEMTIME	startStandard;
-		SYSTEMTIME	startDaylight;
+
 	}
-	
-	private String	name;
-	private TZRule	rule;
-	private SimpleTimeZone simpleTimeZone = null;
 }
